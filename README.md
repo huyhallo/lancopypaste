@@ -1,6 +1,6 @@
 # LAN CopyPaste
 
-LAN CopyPaste là công cụ chia sẻ nội dung copy/paste giữa máy tính và điện thoại trong cùng mạng Wi-Fi/LAN. Dữ liệu chạy trong mạng nội bộ của bạn, không cần tài khoản cloud và không gửi clipboard lên server bên ngoài.
+LAN CopyPaste là công cụ chia sẻ nội dung copy/paste giữa máy tính và điện thoại hoặc máy tính và máy tính trong cùng mạng Wi-Fi/LAN. Dữ liệu chạy trong mạng nội bộ của bạn, không cần tài khoản cloud và không gửi clipboard lên server bên ngoài.
 
 > Android APK đã được phát hành.
 
