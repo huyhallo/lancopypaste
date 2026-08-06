@@ -2,7 +2,7 @@
 
 LAN CopyPaste là công cụ chia sẻ nội dung copy/paste giữa máy tính và điện thoại trong cùng mạng Wi-Fi/LAN. Dữ liệu chạy trong mạng nội bộ của bạn, không cần tài khoản cloud và không gửi clipboard lên server bên ngoài.
 
-> Android APK sẽ được đóng gói và phát hành tải về sau. Hiện tại repo tập trung vào bản Windows/web và mã nguồn Android.
+> Android APK đã được phát hành.
 
 ## Dùng Nhanh Trên Windows
 
