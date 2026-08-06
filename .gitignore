@@ -1,0 +1,15 @@
+node_modules/
+.data/
+npm-debug.log*
+
+android/.gradle/
+android/.idea/
+android/**/build/
+android/local.properties
+android/captures/
+
+*.iml
+*.apk
+*.aab
+*.keystore
+*.jks

@@ -1,0 +1,20 @@
+{
+  "name": "lancopypaste",
+  "version": "1.0.0",
+  "description": "LAN clipboard sharing MVP for laptops and Android phones.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "agent": "node desktop-agent.js",
+    "dev": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.2.1",
+    "qrcode-terminal": "^0.12.0",
+    "ws": "^8.21.2"
+  }
+}

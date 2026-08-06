@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">LAN CopyPaste</string>
+    <string name="tile_label">Gửi clipboard</string>
+</resources>

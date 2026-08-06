@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LAN CopyPaste</title>
+    <meta name="theme-color" content="#147d64" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="topbar">
+        <div>
+          <h1>LAN CopyPaste</h1>
+          <p>Chia sẻ văn bản trong mạng LAN.</p>
+        </div>
+        <button type="button" class="installBtn" id="installBtn" hidden>Cài app</button>
+        <div class="status" id="status">
+          <span class="dot"></span>
+          <span>Đang kết nối</span>
+        </div>
+      </section>
+
+      <section class="grid">
+        <form class="panel composer" id="sendForm">
+          <div class="formHead">
+            <label for="clipInput">Gửi đi</label>
+            <button type="button" class="textBtn" id="clearBtn">Xóa</button>
+          </div>
+          <textarea id="clipInput" placeholder="Dán nội dung vào đây..."></textarea>
+          <div class="actions">
+            <button type="button" class="secondary" id="pasteBtn">Dán</button>
+            <button type="submit">Gửi ngay</button>
+          </div>
+        </form>
+
+        <section class="panel inbox">
+          <div class="panelHeader">
+            <h2>Đã nhận</h2>
+            <button type="button" class="secondary" id="copyBtn" disabled>Sao chép</button>
+          </div>
+          <pre id="receivedText">Chưa có nội dung nào.</pre>
+          <p class="meta" id="receivedMeta"></p>
+        </section>
+      </section>
+
+      <section class="panel footerPanel">
+        <div>
+          <h2>Thiết bị đang kết nối</h2>
+          <p id="deviceName"></p>
+        </div>
+        <ul id="devices"></ul>
+      </section>
+
+      <section class="panel historyPanel">
+        <div class="panelHeader">
+          <div>
+            <h2>Lịch sử đã mã hóa</h2>
+            <p class="meta">Lưu local trên máy chạy server.</p>
+          </div>
+          <div class="historyActions">
+            <button type="button" class="secondary" id="historyRefreshBtn">Tải lại</button>
+            <button type="button" class="secondary dangerBtn" id="historyClearBtn">Xóa hết</button>
+          </div>
+        </div>
+        <div class="historyFilters">
+          <input id="historySearch" type="search" placeholder="Tìm nội dung hoặc thiết bị..." />
+          <select id="historyDevice">
+            <option value="">Tất cả thiết bị</option>
+          </select>
+          <select id="historyLimit">
+            <option value="20">20 mục</option>
+            <option value="50">50 mục</option>
+            <option value="80" selected>80 mục</option>
+            <option value="150">150 mục</option>
+            <option value="500">500 mục</option>
+          </select>
+        </div>
+        <div class="historyList" id="historyList">Đang tải lịch sử...</div>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

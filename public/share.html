@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Share to LAN CopyPaste</title>
+    <meta name="theme-color" content="#147d64" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app shareApp">
+      <section class="topbar">
+        <div>
+          <h1>Share</h1>
+          <p>Dang gui sang cac thiet bi trong LAN.</p>
+        </div>
+        <div class="status" id="status">
+          <span class="dot"></span>
+          <span>Dang ket noi</span>
+        </div>
+      </section>
+
+      <form class="panel composer" id="sendForm">
+        <div class="formHead">
+          <label for="clipInput">Noi dung share</label>
+          <button type="button" class="textBtn" id="clearBtn">Xoa</button>
+        </div>
+        <textarea id="clipInput" placeholder="Noi dung tu Android Share se hien o day..."></textarea>
+        <div class="actions">
+          <button type="button" class="secondary" id="pasteBtn">Paste</button>
+          <button type="submit">Gui ngay</button>
+        </div>
+      </form>
+
+      <section class="panel inbox compactInbox">
+        <div class="panelHeader">
+          <h2>Trang thai</h2>
+          <button type="button" class="secondary" id="copyBtn" disabled>Copy</button>
+        </div>
+        <pre id="receivedText">San sang gui.</pre>
+        <p class="meta" id="receivedMeta"></p>
+      </section>
+
+      <section class="panel footerPanel">
+        <div>
+          <h2>Thiet bi dang ket noi</h2>
+          <p id="deviceName"></p>
+        </div>
+        <ul id="devices"></ul>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
