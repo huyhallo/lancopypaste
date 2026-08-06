@@ -14,10 +14,19 @@ data class ReceivedClip(
     val createdAt: Long
 )
 
+data class HistoryItem(
+    val id: String,
+    val preview: String,
+    val fromName: String,
+    val createdAt: Long,
+    val length: Int
+)
+
 object ClipSender {
     private const val TAG = "LANCopyPaste"
     private const val PREFS = "lan_copypaste"
     private const val SERVER_URL = "server_url"
+    private const val WATCH_CLIPBOARD = "watch_clipboard"
     private const val DEFAULT_SERVER = "http://192.168.1.101:3000"
 
     fun getServerUrl(context: Context): String {
@@ -30,6 +39,18 @@ object ClipSender {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
             .putString(SERVER_URL, normalizeUrl(url))
+            .apply()
+    }
+
+    fun isClipboardWatcherEnabled(context: Context): Boolean {
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(WATCH_CLIPBOARD, false)
+    }
+
+    fun saveClipboardWatcherEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(WATCH_CLIPBOARD, enabled)
             .apply()
     }
 
@@ -98,6 +119,66 @@ object ClipSender {
                 text = clip.optString("text"),
                 fromName = clip.optString("fromName"),
                 createdAt = clip.optLong("createdAt")
+            )
+        }
+    }
+
+    fun history(context: Context, limit: Int = 50): Result<List<HistoryItem>> {
+        return runCatching {
+            val endpoint = URL("${getServerUrl(context)}/api/history?limit=$limit")
+            val connection = endpoint.openConnection() as HttpURLConnection
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 5000
+            connection.readTimeout = 5000
+
+            val code = connection.responseCode
+            val body = connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+            connection.disconnect()
+
+            if (code !in 200..299) {
+                error("Server returned HTTP $code")
+            }
+
+            val items = JSONObject(body).optJSONArray("items") ?: return@runCatching emptyList()
+            buildList {
+                for (index in 0 until items.length()) {
+                    val item = items.optJSONObject(index) ?: continue
+                    add(
+                        HistoryItem(
+                            id = item.optString("id"),
+                            preview = item.optString("preview"),
+                            fromName = item.optString("fromName"),
+                            createdAt = item.optLong("createdAt"),
+                            length = item.optInt("length")
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    fun historyItem(context: Context, id: String): Result<ReceivedClip> {
+        return runCatching {
+            val endpoint = URL("${getServerUrl(context)}/api/history/$id")
+            val connection = endpoint.openConnection() as HttpURLConnection
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 5000
+            connection.readTimeout = 5000
+
+            val code = connection.responseCode
+            val body = connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+            connection.disconnect()
+
+            if (code !in 200..299) {
+                error("Server returned HTTP $code")
+            }
+
+            val item = JSONObject(body)
+            ReceivedClip(
+                id = item.optString("id"),
+                text = item.optString("text"),
+                fromName = item.optString("fromName"),
+                createdAt = item.optLong("createdAt")
             )
         }
     }
