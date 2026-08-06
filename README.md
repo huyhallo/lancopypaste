@@ -136,7 +136,7 @@ APK debug sau khi build:
 android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-APK phát hành cho người dùng sẽ được đóng gói và tải lên sau.
+Android APK đã được phát hành.
 
 ## Lưu Ý Bảo Mật
 
