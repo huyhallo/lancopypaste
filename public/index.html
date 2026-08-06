@@ -13,7 +13,7 @@
       <section class="topbar">
         <div>
           <h1>LAN CopyPaste</h1>
-          <p>Chia sẻ văn bản trong mạng LAN.</p>
+          <p>Chia sẻ clipboard trong mạng LAN.</p>
         </div>
         <button type="button" class="installBtn" id="installBtn" hidden>Cài app</button>
         <div class="status" id="status">
@@ -22,73 +22,152 @@
         </div>
       </section>
 
-      <section class="grid">
-        <form class="panel composer" id="sendForm">
-          <div class="formHead">
-            <label for="clipInput">Gửi đi</label>
-            <button type="button" class="textBtn" id="clearBtn">Xóa</button>
-          </div>
-          <textarea id="clipInput" placeholder="Dán nội dung vào đây..."></textarea>
-          <div class="imagePicker">
-            <input id="imageInput" type="file" accept="image/*" />
-            <img id="sendImagePreview" alt="Ảnh chuẩn bị gửi" hidden />
-          </div>
-          <div class="actions">
-            <button type="button" class="secondary" id="pasteBtn">Dán</button>
-            <button type="button" class="secondary" id="chooseImageBtn">Chọn ảnh</button>
-            <button type="submit">Gửi ngay</button>
-          </div>
-        </form>
+      <nav class="tabs" aria-label="Chức năng">
+        <button type="button" class="tabBtn active" data-tab="main">Gửi nhận</button>
+        <button type="button" class="tabBtn" data-tab="pairing">Ghép nối</button>
+        <button type="button" class="tabBtn" data-tab="history">Lịch sử</button>
+        <button type="button" class="tabBtn" data-tab="devices">Thiết bị</button>
+      </nav>
 
-        <section class="panel inbox">
-          <div class="panelHeader">
-            <h2>Đã nhận</h2>
-            <button type="button" class="secondary" id="copyBtn" disabled>Sao chép</button>
-          </div>
-          <pre id="receivedText">Chưa có nội dung nào.</pre>
-          <img class="receivedImage" id="receivedImage" alt="Ảnh đã nhận" hidden />
-          <p class="meta" id="receivedMeta"></p>
+      <section class="tabPanel active" id="tab-main">
+        <section class="grid">
+          <form class="panel composer" id="sendForm">
+            <div class="formHead">
+              <label for="clipInput">Gửi đi</label>
+              <button type="button" class="textBtn" id="clearBtn">Xóa</button>
+            </div>
+            <textarea id="clipInput" placeholder="Dán nội dung vào đây..."></textarea>
+            <div class="imagePicker">
+              <input id="imageInput" type="file" accept="image/*" />
+              <img id="sendImagePreview" alt="Ảnh chuẩn bị gửi" hidden />
+            </div>
+            <div class="actions">
+              <button type="button" class="secondary" id="pasteBtn">Dán</button>
+              <button type="button" class="secondary" id="chooseImageBtn">Chọn ảnh</button>
+              <button type="submit">Gửi ngay</button>
+            </div>
+          </form>
+
+          <section class="panel inbox">
+            <div class="panelHeader">
+              <h2>Đã nhận</h2>
+              <button type="button" class="secondary" id="copyBtn" disabled>Sao chép</button>
+            </div>
+            <pre id="receivedText">Chưa có nội dung nào.</pre>
+            <img class="receivedImage" id="receivedImage" alt="Ảnh đã nhận" hidden />
+            <p class="meta" id="receivedMeta"></p>
+          </section>
         </section>
       </section>
 
-      <section class="panel footerPanel">
-        <div>
-          <h2>Thiết bị đang kết nối</h2>
-          <p id="deviceName"></p>
-        </div>
-        <ul id="devices"></ul>
+      <section class="tabPanel" id="tab-pairing">
+        <section class="panel hostPairingPanel" id="hostPairingPanel" hidden>
+          <div>
+            <h2>Mã ghép nối</h2>
+            <p class="meta">Dùng mã này trên điện thoại hoặc quét QR trong app Android.</p>
+          </div>
+          <div class="hostPairingContent">
+            <div class="pairingCode" id="hostPairingCode">------</div>
+            <div class="pairingQr">
+              <img id="hostPairingQr" alt="QR ghép nối thiết bị" />
+              <p class="meta" id="hostPairingMeta"></p>
+            </div>
+          </div>
+          <div class="pairingActions">
+            <button type="button" id="refreshPairingBtn">Mã mới</button>
+            <button type="button" class="secondary" id="extendPairingBtn">Gia hạn 5 phút</button>
+          </div>
+        </section>
+
+        <section class="panel pairingPanel" id="pairingPanel" hidden>
+          <div>
+            <h2>Ghép nối thiết bị này</h2>
+            <p class="meta">Nhập mã 6 số đang hiển thị trên máy chủ hoặc mở link QR.</p>
+          </div>
+          <div class="pairingGrid">
+            <div>
+              <input id="pairCodeInput" inputmode="numeric" maxlength="6" placeholder="Mã ghép nối" />
+              <button type="button" id="pairBtn">Ghép nối</button>
+            </div>
+            <div class="pairingQr">
+              <img id="pairQr" alt="QR ghép nối" />
+              <p class="meta" id="pairMeta"></p>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panelHeader">
+            <div>
+              <h2>Thiết bị đã ghép nối</h2>
+              <p class="meta">Máy đang kết nối sẽ có IP hiện tại.</p>
+            </div>
+            <div class="deviceActions">
+              <select id="pairedDeviceStatusFilter" aria-label="Lọc trạng thái thiết bị">
+                <option value="">Tất cả</option>
+                <option value="online">Đang kết nối</option>
+                <option value="offline">Chưa kết nối</option>
+              </select>
+              <button type="button" class="secondary" id="pairedDevicesRefreshBtn">Tải lại</button>
+            </div>
+          </div>
+          <div class="deviceTable" id="pairedDevicesList">Đang tải thiết bị...</div>
+        </section>
       </section>
 
-      <section class="panel historyPanel">
-        <div class="panelHeader">
+      <section class="tabPanel" id="tab-history">
+        <section class="panel historyPanel">
+          <div class="panelHeader">
+            <div>
+              <h2>Lịch sử đã mã hóa</h2>
+              <p class="meta">Trên máy chính, lịch sử có thể được chuyển vào kho lưu trữ đã mã hóa.</p>
+            </div>
+            <div class="historyActions">
+              <button type="button" class="secondary" id="historyRefreshBtn">Tải lại</button>
+              <button type="button" class="secondary dangerBtn" id="historyClearBtn">Chuyển vào lưu trữ</button>
+            </div>
+          </div>
+          <div class="historyFilters">
+            <input id="historySearch" type="search" placeholder="Tìm nội dung hoặc thiết bị..." />
+            <select id="historyDevice">
+              <option value="">Tất cả thiết bị</option>
+            </select>
+            <select id="historyKind">
+              <option value="">Tất cả loại</option>
+              <option value="text">Văn bản</option>
+              <option value="image">Ảnh</option>
+            </select>
+            <select id="historyLimit">
+              <option value="20">20 mục</option>
+              <option value="50">50 mục</option>
+              <option value="80" selected>80 mục</option>
+              <option value="150">150 mục</option>
+              <option value="500">500 mục</option>
+            </select>
+          </div>
+          <div class="historyList" id="historyList">Đang tải lịch sử...</div>
+        </section>
+
+        <section class="panel trashPanel" id="trashPanel" hidden>
+          <div class="panelHeader">
+            <div>
+              <h2>Kho lưu trữ</h2>
+              <p class="meta">Ghi nhận thời điểm, thiết bị và IP đã chuyển lịch sử vào lưu trữ.</p>
+            </div>
+            <button type="button" class="secondary" id="trashRefreshBtn">Tải lại</button>
+          </div>
+          <div class="trashList" id="trashList">Chưa tải kho lưu trữ.</div>
+        </section>
+      </section>
+
+      <section class="tabPanel" id="tab-devices">
+        <section class="panel footerPanel">
           <div>
-            <h2>Lịch sử đã mã hóa</h2>
-            <p class="meta">Lưu local trên máy chạy server.</p>
+            <h2>Thiết bị đang kết nối</h2>
+            <p id="deviceName"></p>
           </div>
-          <div class="historyActions">
-            <button type="button" class="secondary" id="historyRefreshBtn">Tải lại</button>
-            <button type="button" class="secondary dangerBtn" id="historyClearBtn">Xóa hết</button>
-          </div>
-        </div>
-        <div class="historyFilters">
-          <input id="historySearch" type="search" placeholder="Tìm nội dung hoặc thiết bị..." />
-          <select id="historyDevice">
-            <option value="">Tất cả thiết bị</option>
-          </select>
-          <select id="historyKind">
-            <option value="">Tất cả loại</option>
-            <option value="text">Văn bản</option>
-            <option value="image">Ảnh</option>
-          </select>
-          <select id="historyLimit">
-            <option value="20">20 mục</option>
-            <option value="50">50 mục</option>
-            <option value="80" selected>80 mục</option>
-            <option value="150">150 mục</option>
-            <option value="500">500 mục</option>
-          </select>
-        </div>
-        <div class="historyList" id="historyList">Đang tải lịch sử...</div>
+          <ul id="devices"></ul>
+        </section>
       </section>
     </main>
 
