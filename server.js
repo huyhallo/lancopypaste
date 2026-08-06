@@ -11,10 +11,12 @@ const PORT = Number(process.env.PORT || 3000);
 const DATA_DIR = path.join(__dirname, ".data");
 const KEY_FILE = path.join(DATA_DIR, "history.key");
 const HISTORY_FILE = path.join(DATA_DIR, "history.json");
+const BLOB_DIR = path.join(DATA_DIR, "blobs");
 const MAX_HISTORY_ITEMS = Number(process.env.MAX_HISTORY_ITEMS || 500);
+const MAX_IMAGE_BYTES = Number(process.env.MAX_IMAGE_BYTES || 8 * 1024 * 1024);
 
 const app = express();
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "12mb" }));
 app.use(express.urlencoded({ extended: false, limit: "1mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -35,9 +37,46 @@ app.post("/api/clip", (req, res) => {
   }
 
   const clip = createClip({
+    kind: "text",
     text,
     fromId: "http-api",
     fromName: String(req.body.fromName || "Android").slice(0, 40),
+  });
+
+  broadcast({ type: "clip", clip });
+  res.status(201).json({ clip });
+});
+
+app.post("/api/clip/image", (req, res) => {
+  const dataUrl = String(req.body.dataUrl || "");
+  const fromName = String(req.body.fromName || "Web").slice(0, 40);
+  const mimeType = String(req.body.mimeType || "image/png").slice(0, 80);
+
+  if (!mimeType.startsWith("image/")) {
+    res.status(400).json({ error: "invalid_image_type" });
+    return;
+  }
+
+  const base64 = dataUrl.includes(",") ? dataUrl.split(",").pop() : dataUrl;
+  let buffer;
+  try {
+    buffer = Buffer.from(base64, "base64");
+  } catch {
+    res.status(400).json({ error: "invalid_image_data" });
+    return;
+  }
+
+  if (!buffer.length || buffer.length > MAX_IMAGE_BYTES) {
+    res.status(400).json({ error: "invalid_image_size", maxBytes: MAX_IMAGE_BYTES });
+    return;
+  }
+
+  const clip = createClip({
+    kind: "image",
+    imageBuffer: buffer,
+    mimeType,
+    fromId: "http-api",
+    fromName,
   });
 
   broadcast({ type: "clip", clip });
@@ -48,28 +87,29 @@ app.get("/api/history", (req, res) => {
   const limit = Math.min(Number(req.query.limit || 100), MAX_HISTORY_ITEMS);
   const query = String(req.query.q || "").trim().toLowerCase();
   const from = String(req.query.from || "").trim();
+  const kind = String(req.query.kind || "").trim();
   const items = loadHistory()
-    .map((entry) => {
-      const text = decryptText(entry.payload);
-      return { entry, text };
-    })
+    .map((entry) => ({ entry, text: getEntrySearchText(entry) }))
     .filter(({ entry, text }) => {
       const matchesDevice = !from || entry.fromName === from;
+      const matchesKind = !kind || getEntryKind(entry) === kind;
       const matchesQuery =
         !query ||
         text.toLowerCase().includes(query) ||
         entry.fromName.toLowerCase().includes(query);
-      return matchesDevice && matchesQuery;
+      return matchesDevice && matchesKind && matchesQuery;
     })
     .reverse()
     .slice(0, limit)
     .map(({ entry, text }) => {
       return {
         id: entry.id,
+        kind: getEntryKind(entry),
         fromName: entry.fromName,
         createdAt: entry.createdAt,
-        preview: text.length > 180 ? `${text.slice(0, 180)}...` : text,
-        length: text.length,
+        preview: getEntryPreview(entry, text),
+        length: entry.length || text.length,
+        mimeType: entry.mimeType,
       };
     });
 
@@ -97,9 +137,13 @@ app.get("/api/history/:id", (req, res) => {
 
   res.json({
     id: entry.id,
+    kind: getEntryKind(entry),
     fromName: entry.fromName,
     createdAt: entry.createdAt,
-    text: decryptText(entry.payload),
+    text: entry.payload ? decryptText(entry.payload) : undefined,
+    dataUrl: entry.blobFile ? readImageDataUrl(entry) : undefined,
+    mimeType: entry.mimeType,
+    length: entry.length,
   });
 });
 
@@ -118,6 +162,7 @@ let encryptionKey = null;
 
 function ensureDataFiles() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.mkdirSync(BLOB_DIR, { recursive: true });
 
   if (!fs.existsSync(KEY_FILE)) {
     fs.writeFileSync(KEY_FILE, crypto.randomBytes(32).toString("base64"), {
@@ -152,6 +197,19 @@ function encryptText(text) {
   };
 }
 
+function encryptBuffer(buffer) {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", getEncryptionKey(), iv);
+  const encrypted = Buffer.concat([cipher.update(buffer), cipher.final()]);
+
+  return {
+    alg: "aes-256-gcm",
+    iv: iv.toString("base64"),
+    tag: cipher.getAuthTag().toString("base64"),
+    data: encrypted.toString("base64"),
+  };
+}
+
 function decryptText(payload) {
   const decipher = crypto.createDecipheriv(
     "aes-256-gcm",
@@ -164,6 +222,20 @@ function decryptText(payload) {
     decipher.update(Buffer.from(payload.data, "base64")),
     decipher.final(),
   ]).toString("utf8");
+}
+
+function decryptBuffer(payload) {
+  const decipher = crypto.createDecipheriv(
+    "aes-256-gcm",
+    getEncryptionKey(),
+    Buffer.from(payload.iv, "base64")
+  );
+  decipher.setAuthTag(Buffer.from(payload.tag, "base64"));
+
+  return Buffer.concat([
+    decipher.update(Buffer.from(payload.data, "base64")),
+    decipher.final(),
+  ]);
 }
 
 function loadHistory() {
@@ -184,27 +256,81 @@ function saveHistory(items) {
 
 function rememberClip(clip) {
   const history = loadHistory();
-  history.push({
+  const entry = {
     id: clip.id,
+    kind: clip.kind,
     fromName: clip.fromName,
     createdAt: clip.createdAt,
-    payload: encryptText(clip.text),
-  });
+  };
+
+  if (clip.kind === "image") {
+    const blobFile = `${clip.id}.json`;
+    fs.writeFileSync(
+      path.join(BLOB_DIR, blobFile),
+      JSON.stringify(encryptBuffer(clip.imageBuffer), null, 2)
+    );
+    entry.blobFile = blobFile;
+    entry.mimeType = clip.mimeType;
+    entry.length = clip.imageBuffer.length;
+    entry.width = clip.width;
+    entry.height = clip.height;
+  } else {
+    entry.payload = encryptText(clip.text);
+  }
+
+  history.push(entry);
 
   saveHistory(history.slice(-MAX_HISTORY_ITEMS));
 }
 
-function createClip({ text, fromId, fromName }) {
+function createClip({ kind = "text", text = "", imageBuffer, mimeType, fromId, fromName }) {
   latestClip = {
     id: crypto.randomUUID(),
+    kind,
     text,
     fromId,
     fromName,
     createdAt: Date.now(),
   };
 
+  if (kind === "image") {
+    latestClip.text = "";
+    latestClip.mimeType = mimeType;
+    latestClip.length = imageBuffer.length;
+    latestClip.dataUrl = `data:${mimeType};base64,${imageBuffer.toString("base64")}`;
+    latestClip.imageBuffer = imageBuffer;
+  }
+
   rememberClip(latestClip);
+  delete latestClip.imageBuffer;
   return latestClip;
+}
+
+function getEntryKind(entry) {
+  return entry.kind || "text";
+}
+
+function getEntrySearchText(entry) {
+  if (getEntryKind(entry) === "image") {
+    return `${entry.mimeType || "image"} ${entry.fromName || ""}`;
+  }
+
+  return decryptText(entry.payload);
+}
+
+function getEntryPreview(entry, text) {
+  if (getEntryKind(entry) === "image") {
+    const kb = Math.round((entry.length || 0) / 1024);
+    return `Ảnh ${entry.mimeType || ""} - ${kb} KB`;
+  }
+
+  return text.length > 180 ? `${text.slice(0, 180)}...` : text;
+}
+
+function readImageDataUrl(entry) {
+  const payload = JSON.parse(fs.readFileSync(path.join(BLOB_DIR, entry.blobFile), "utf8"));
+  const buffer = decryptBuffer(payload);
+  return `data:${entry.mimeType || "image/png"};base64,${buffer.toString("base64")}`;
 }
 
 function getLanAddresses() {
@@ -286,6 +412,7 @@ wss.on("connection", (ws, req) => {
       if (!text.trim()) return;
 
       latestClip = createClip({
+        kind: "text",
         text,
         fromId: id,
         fromName: client.name,

@@ -2,10 +2,14 @@ const statusEl = document.querySelector("#status");
 const sendForm = document.querySelector("#sendForm");
 const clipInput = document.querySelector("#clipInput");
 const pasteBtn = document.querySelector("#pasteBtn");
+const chooseImageBtn = document.querySelector("#chooseImageBtn");
+const imageInput = document.querySelector("#imageInput");
+const sendImagePreview = document.querySelector("#sendImagePreview");
 const copyBtn = document.querySelector("#copyBtn");
 const clearBtn = document.querySelector("#clearBtn");
 const installBtn = document.querySelector("#installBtn");
 const receivedText = document.querySelector("#receivedText");
+const receivedImage = document.querySelector("#receivedImage");
 const receivedMeta = document.querySelector("#receivedMeta");
 const devicesEl = document.querySelector("#devices");
 const deviceNameEl = document.querySelector("#deviceName");
@@ -14,6 +18,7 @@ const historyRefreshBtn = document.querySelector("#historyRefreshBtn");
 const historyClearBtn = document.querySelector("#historyClearBtn");
 const historySearch = document.querySelector("#historySearch");
 const historyDevice = document.querySelector("#historyDevice");
+const historyKind = document.querySelector("#historyKind");
 const historyLimit = document.querySelector("#historyLimit");
 
 const deviceName =
@@ -26,6 +31,8 @@ deviceNameEl.textContent = `Tên thiết bị của bạn: ${deviceName}`;
 let socket;
 let myId = null;
 let latestText = "";
+let latestClip = null;
+let selectedImage = null;
 let deferredInstallPrompt = null;
 let historyDebounce = null;
 
@@ -84,11 +91,22 @@ function renderDevices(devices) {
 }
 
 function showClip(clip) {
-  latestText = clip.text;
-  receivedText.textContent = clip.text;
+  latestClip = clip;
+  latestText = clip.text || "";
+  receivedText.hidden = clip.kind === "image";
+  receivedImage.hidden = clip.kind !== "image";
+
+  if (clip.kind === "image") {
+    receivedImage.src = clip.dataUrl;
+    receivedText.textContent = "";
+  } else {
+    receivedText.textContent = clip.text;
+    receivedImage.removeAttribute("src");
+  }
+
   receivedMeta.textContent = `Từ ${clip.fromName} lúc ${new Date(
     clip.createdAt
-  ).toLocaleTimeString()}`;
+  ).toLocaleTimeString()}${clip.kind === "image" ? " - ảnh" : ""}`;
   copyBtn.disabled = false;
   loadHistory();
   loadHistoryDevices();
@@ -96,7 +114,11 @@ function showClip(clip) {
 
 function resetReceived() {
   latestText = "";
+  latestClip = null;
   receivedText.textContent = "Chưa có nội dung nào.";
+  receivedText.hidden = false;
+  receivedImage.hidden = true;
+  receivedImage.removeAttribute("src");
   receivedMeta.textContent = "";
   copyBtn.disabled = true;
   copyBtn.textContent = "Sao chép";
@@ -114,6 +136,11 @@ function sendSharedTextFromUrl() {
 
 sendForm.addEventListener("submit", (event) => {
   event.preventDefault();
+  if (selectedImage) {
+    sendImage(selectedImage);
+    return;
+  }
+
   const text = clipInput.value;
   if (!text.trim() || socket.readyState !== WebSocket.OPEN) return;
 
@@ -132,17 +159,77 @@ pasteBtn.addEventListener("click", async () => {
 
 clearBtn.addEventListener("click", () => {
   clipInput.value = "";
+  clearSelectedImage();
   clipInput.focus();
 });
 
 copyBtn.addEventListener("click", async () => {
-  if (!latestText) return;
-  await navigator.clipboard.writeText(latestText);
+  if (!latestClip) return;
+
+  if (latestClip.kind === "image") {
+    await copyImageToClipboard(latestClip.dataUrl, latestClip.mimeType);
+  } else {
+    await navigator.clipboard.writeText(latestText);
+  }
+
   copyBtn.textContent = "Đã sao chép";
   setTimeout(() => {
     copyBtn.textContent = "Sao chép";
   }, 1000);
 });
+
+chooseImageBtn?.addEventListener("click", () => imageInput.click());
+
+imageInput?.addEventListener("change", () => {
+  const file = imageInput.files?.[0];
+  if (!file) return;
+  if (!file.type.startsWith("image/")) return;
+
+  selectedImage = file;
+  sendImagePreview.src = URL.createObjectURL(file);
+  sendImagePreview.hidden = false;
+});
+
+async function sendImage(file) {
+  const dataUrl = await fileToDataUrl(file);
+  const response = await fetch("/api/clip/image", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      dataUrl,
+      mimeType: file.type || "image/png",
+      fromName: deviceName,
+    }),
+  });
+
+  if (!response.ok) return;
+  const data = await response.json();
+  showClip(data.clip);
+  clearSelectedImage();
+}
+
+function clearSelectedImage() {
+  selectedImage = null;
+  imageInput.value = "";
+  sendImagePreview.hidden = true;
+  sendImagePreview.removeAttribute("src");
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function copyImageToClipboard(dataUrl, mimeType = "image/png") {
+  const blob = await (await fetch(dataUrl)).blob();
+  await navigator.clipboard.write([
+    new ClipboardItem({ [mimeType]: blob }),
+  ]);
+}
 
 async function loadHistory() {
   if (!historyList) return;
@@ -153,6 +240,7 @@ async function loadHistory() {
     });
     if (historySearch?.value.trim()) params.set("q", historySearch.value.trim());
     if (historyDevice?.value) params.set("from", historyDevice.value);
+    if (historyKind?.value) params.set("kind", historyKind.value);
 
     const response = await fetch(`/api/history?${params.toString()}`);
     const data = await response.json();
@@ -175,9 +263,11 @@ async function loadHistory() {
 
       const meta = document.createElement("span");
       meta.className = "historyMeta";
-      meta.textContent = `${item.fromName} - ${new Date(
+      meta.textContent = `${item.kind === "image" ? "Ảnh" : "Văn bản"} - ${item.fromName} - ${new Date(
         item.createdAt
-      ).toLocaleString()} - ${item.length} ký tự`;
+      ).toLocaleString()} - ${
+        item.kind === "image" ? `${Math.round(item.length / 1024)} KB` : `${item.length} ký tự`
+      }`;
 
       button.append(title, meta);
       historyList.appendChild(button);
@@ -227,6 +317,7 @@ historySearch?.addEventListener("input", () => {
 });
 
 historyDevice?.addEventListener("change", loadHistory);
+historyKind?.addEventListener("change", loadHistory);
 historyLimit?.addEventListener("change", loadHistory);
 
 historyClearBtn?.addEventListener("click", async () => {

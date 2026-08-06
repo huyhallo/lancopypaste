@@ -29,8 +29,13 @@
             <button type="button" class="textBtn" id="clearBtn">Xóa</button>
           </div>
           <textarea id="clipInput" placeholder="Dán nội dung vào đây..."></textarea>
+          <div class="imagePicker">
+            <input id="imageInput" type="file" accept="image/*" />
+            <img id="sendImagePreview" alt="Ảnh chuẩn bị gửi" hidden />
+          </div>
           <div class="actions">
             <button type="button" class="secondary" id="pasteBtn">Dán</button>
+            <button type="button" class="secondary" id="chooseImageBtn">Chọn ảnh</button>
             <button type="submit">Gửi ngay</button>
           </div>
         </form>
@@ -41,6 +46,7 @@
             <button type="button" class="secondary" id="copyBtn" disabled>Sao chép</button>
           </div>
           <pre id="receivedText">Chưa có nội dung nào.</pre>
+          <img class="receivedImage" id="receivedImage" alt="Ảnh đã nhận" hidden />
           <p class="meta" id="receivedMeta"></p>
         </section>
       </section>
@@ -68,6 +74,11 @@
           <input id="historySearch" type="search" placeholder="Tìm nội dung hoặc thiết bị..." />
           <select id="historyDevice">
             <option value="">Tất cả thiết bị</option>
+          </select>
+          <select id="historyKind">
+            <option value="">Tất cả loại</option>
+            <option value="text">Văn bản</option>
+            <option value="image">Ảnh</option>
           </select>
           <select id="historyLimit">
             <option value="20">20 mục</option>
