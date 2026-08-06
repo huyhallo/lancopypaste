@@ -12,5 +12,4 @@ android/captures/
 *.apk
 *.aab
 *.keystore
-*.jks
-android/ 
+*.jks 
