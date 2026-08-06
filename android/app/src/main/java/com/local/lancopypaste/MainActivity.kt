@@ -393,8 +393,14 @@ private fun SettingsScreen(
                         ClipSender.saveClipboardWatcherEnabled(context, enabled)
                         val intent = Intent(context, ClipboardWatcherService::class.java)
                         if (enabled) {
-                            ContextCompat.startForegroundService(context, intent)
-                            onStatus("Đã bật theo dõi clipboard")
+                            try {
+                                ContextCompat.startForegroundService(context, intent)
+                                onStatus("Đã bật theo dõi clipboard")
+                            } catch (error: Exception) {
+                                watcherEnabled = false
+                                ClipSender.saveClipboardWatcherEnabled(context, false)
+                                onStatus("Không bật được theo dõi clipboard: ${error.message}")
+                            }
                         } else {
                             context.stopService(intent)
                             onStatus("Đã tắt theo dõi clipboard")
