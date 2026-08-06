@@ -1,95 +1,107 @@
 # LAN CopyPaste
 
-MVP chia se text copy/paste giua laptop va dien thoai Android trong cung mang LAN.
+LAN CopyPaste là bộ công cụ chia sẻ văn bản copy/paste giữa laptop và điện thoại Android trong cùng mạng LAN. Dự án ưu tiên chạy nội bộ, không cần tài khoản cloud, có web app, desktop agent và Android companion app.
 
-## Chay thu
+## Tính năng
+
+- Gửi/nhận văn bản realtime qua WebSocket trong mạng LAN.
+- Web/PWA dùng được trên laptop, điện thoại và tablet.
+- Desktop agent cho Windows: tự theo dõi clipboard, tự gửi khi clipboard đổi, tự ghi clipboard khi nhận từ thiết bị khác.
+- Android app Stable mode:
+  - Nhận text/link từ Android Share menu.
+  - Gửi clipboard bằng Quick Settings Tile.
+  - Tải nội dung mới nhất từ server và sao chép lại.
+- Lịch sử local được mã hóa bằng `AES-256-GCM`.
+- Tìm kiếm lịch sử, lọc theo thiết bị gửi và giới hạn số mục hiển thị.
+
+## Chạy server
 
 ```powershell
 npm install
 npm start
 ```
 
-Mo link LAN ma terminal in ra tren cac thiet bi cung Wi-Fi, vi du:
-
-```text
-http://192.168.1.12:3000
-```
-
-## Cach dung
-
-1. Tren thiet bi gui, paste text vao o `Noi dung gui`.
-2. Bam `Send`.
-3. Tren thiet bi nhan, bam `Copy`.
-
-## Desktop auto agent
-
-Mo them terminal thu hai tren laptop va chay:
-
-```powershell
-npm run agent
-```
-
-Agent se tu doc clipboard Windows. Khi ban copy text tren laptop, no tu gui sang cac thiet bi dang mo web. Khi dien thoai gui text ve, agent tu ghi text do vao clipboard laptop.
-
-Co the ket noi agent den server khac bang:
-
-```powershell
-$env:SERVER_URL="ws://192.168.1.101:3000"; npm run agent
-```
-
-Ban web/PWA van la cach tot nhat cho Android vi Android gioi han viec doc clipboard nen.
-
-## Lich su ma hoa local
-
-Moi doan text duoc gui qua server se duoc luu vao:
-
-```text
-.data/history.json
-```
-
-Noi dung trong file nay duoc ma hoa bang `AES-256-GCM`. Key nam rieng tai:
-
-```text
-.data/history.key
-```
-
-Web co panel `Lich su da ma hoa` de xem lai, copy lai, tai lai, hoac xoa toan bo lich su. Neu mat file key thi khong giai ma duoc lich su cu.
-
-## Android companion / PWA
-
-Tren Android, mo URL LAN trong Chrome:
+Terminal sẽ in ra URL LAN, ví dụ:
 
 ```text
 http://192.168.1.101:3000
 ```
 
-Sau do mo menu Chrome va chon `Add to Home screen` hoac bam nut `Install` neu Chrome hien nut nay. Ban se co mot shortcut/app nhe tren man hinh chinh.
+Mở URL này trên các thiết bị cùng Wi-Fi/LAN.
 
-Ban nay co them Web Share Target:
+## Desktop Agent
 
-1. Chon text/link trong app Android bat ky.
-2. Bam `Share`.
-3. Chon `LAN CopyPaste` neu Android/Chrome da dang ky PWA.
-4. Noi dung se mo trong trang share va tu gui sang laptop.
+Mở thêm một terminal và chạy:
 
-Luu y: Web Share Target tren Chrome Android co the yeu cau PWA duoc cai dat va trong mot so ban Chrome co the khong kich hoat day du tren HTTP LAN. Neu muc Share khong hien, van dung cach mo web, paste text, roi bam `Gui ngay`.
+```powershell
+npm run agent
+```
 
-## Android APK Stable mode
+Agent sẽ theo dõi clipboard Windows. Khi bạn copy text trên laptop, nội dung sẽ được gửi sang các thiết bị đang kết nối. Khi thiết bị khác gửi text về, agent sẽ ghi text đó vào clipboard laptop.
 
-APK debug nam tai:
+Kết nối agent tới server khác:
+
+```powershell
+$env:SERVER_URL="ws://192.168.1.101:3000"; npm run agent
+```
+
+## Android App
+
+APK debug sau khi build nằm tại:
 
 ```text
 android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Tinh nang:
+Cách dùng:
 
-- Mo app, nhap server `http://192.168.1.101:3000`, bam `Luu server`.
-- Trong app bat ky tren Android: chon text/link -> `Share` -> `LAN CopyPaste`.
-- Them Quick Settings Tile `Send Clipboard`; sau khi copy text, keo Quick Settings va bam tile de gui clipboard sang laptop.
+- Mở app, nhập server, ví dụ `http://192.168.1.101:3000`, rồi bấm `Lưu máy chủ`.
+- Trong app bất kỳ trên Android: chọn text/link -> `Share` -> `LAN CopyPaste`.
+- Thêm Quick Settings Tile `Gửi clipboard`; sau khi copy text, kéo Quick Settings và bấm tile để gửi sang laptop.
+- Trong app, bấm `Tải mới nhất` để lấy nội dung mới nhất từ server rồi bấm `Sao chép`.
 
-Server can dang chay `npm start`. APK gui ve endpoint:
+Build APK:
+
+```powershell
+cd android
+$env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"
+$env:Path="$env:JAVA_HOME\bin;$env:Path"
+.\gradlew.bat assembleDebug
+```
+
+## Lịch Sử Mã Hóa Local
+
+Mọi đoạn text gửi qua server được lưu local tại:
 
 ```text
-POST /api/clip
+.data/history.json
 ```
+
+Nội dung trong file này được mã hóa bằng `AES-256-GCM`. Key giải mã nằm riêng tại:
+
+```text
+.data/history.key
+```
+
+Quan trọng:
+
+- `.data/` đã được đưa vào `.gitignore`.
+- Nếu mất `history.key`, lịch sử cũ không thể giải mã.
+- Nếu người khác lấy được cả `history.json` và `history.key`, họ có thể giải mã lịch sử.
+
+## Bảo Mật
+
+LAN CopyPaste được thiết kế cho mạng nội bộ tin cậy. Bản hiện tại chưa có đăng nhập, phân quyền người dùng hoặc mã hóa end-to-end giữa các thiết bị.
+
+Khuyến nghị:
+
+- Chỉ chạy trong mạng Wi-Fi/LAN bạn tin tưởng.
+- Không mở port server ra Internet.
+- Không commit hoặc chia sẻ thư mục `.data/`.
+- Cẩn thận khi copy mật khẩu, OTP, token API hoặc dữ liệu nhạy cảm.
+
+Xem thêm [SECURITY.md](SECURITY.md) và [PRIVACY.md](PRIVACY.md).
+
+## Giấy Phép
+
+Dự án phát hành theo giấy phép MIT. Xem [LICENSE](LICENSE).
